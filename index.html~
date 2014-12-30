@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Alfa</title>
+		<link href="css/style.css" rel="stylesheet">
+		<script src="js/config.js"></script>
+		<script data-main="../main" src="js/require.js"></script>
+	</head>
+	<body>
+			<div id="threejs-container">
+			<canvas width="1350" height="600"></canvas>
+			</div>
+	</body>
+</html>

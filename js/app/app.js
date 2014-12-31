@@ -17,7 +17,14 @@ function ( THREE, camera, renderer, scene) {
 			
 	FizzyText :function()
 	{
-	    this.message = 'dat.gui';	  		  
+	    this.message = 'dat.gui';	
+	    this.speedOfMov = 0.01; 
+	    this.stepSize = 0.1;  		
+	    this.angleRand = 1.0;  
+	    this.vecA = 0;
+	    this.vecB = 0;
+	    this.vecC = 0;
+	    this.alfaMul = -0.01;
 	},
 			
 	randomIntFromInterval : function(min,max)
@@ -31,10 +38,18 @@ function ( THREE, camera, renderer, scene) {
 
 	
 	initializeGUI : function()
-	{
-		var guiImg = new dat.GUI();			  
+	{		  
 	    this.GuiVarHolder = new this.FizzyText();
-	        var gui = new dat.GUI();  		
+	        var gui = new dat.GUI();
+	        this.speedOfMov = 0.01; 
+	        var folderM = gui.addFolder('Move');
+	        folderM.add(this.GuiVarHolder, 'speedOfMov',-3,3); 
+	        folderM.add(this.GuiVarHolder, 'stepSize',-3,3);  
+	        folderM.add(this.GuiVarHolder, 'angleRand',-10,10);  
+	        folderM.add(this.GuiVarHolder, 'vecA');
+	        folderM.add(this.GuiVarHolder, 'vecB');
+	        folderM.add(this.GuiVarHolder, 'vecC');
+	        folderM.add(this.GuiVarHolder, 'alfaMul');	
 	},
 	
 
@@ -48,7 +63,7 @@ function ( THREE, camera, renderer, scene) {
 	    renderer.setClearColor( 0xff0000, 1 );
 	    
 	    
-	    for(var i = 0;i<100;i++)
+	    for(var i = 0;i<100 ;i++)
 	    {
 	       this.createSphere(0,0);
 	   }
@@ -113,7 +128,8 @@ function ( THREE, camera, renderer, scene) {
 	
 	createSphere : function(posX,posY)
 	{
-		var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.3, 1, 1  ), new THREE.MeshNormalMaterial());
+		var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.1, 1, 1 ), new THREE.MeshBasicMaterial({
+		color :  new THREE.Color( 1, 0, 0)}));
 		this.sceneObjects.push({
                 object : sphere,
                 t : 0 , 
@@ -127,9 +143,10 @@ function ( THREE, camera, renderer, scene) {
                 mid2Y : 20,
                 isMoving : true,
                 frontVector : new THREE.Vector3(0,1,0),
-                stepSize : 0.5,
-                speed : 0.05,
-                randomAngle : app.randomFloatFromInterval(-Math.PI,Math.PI),
+                centerPosition : new THREE.Vector3(0,0,0),
+                stepSize : app.GuiVarHolder.stepSize,
+                speed : app.GuiVarHolder.speedOfMov,
+                randomAngle : app.randomFloatFromInterval(-Math.PI*app.GuiVarHolder.angleRand,Math.PI*app.GuiVarHolder.angleRand),
                 oldPosition : new THREE.Vector3(0,0,0),
                 lineDeb : [],
                 debugMove : 0,
@@ -166,13 +183,21 @@ function ( THREE, camera, renderer, scene) {
                 {
                    if(this.t < 1)
                    {
+        
+                       this.centerPosition = new THREE.Vector3(app.GuiVarHolder.vecA,app.GuiVarHolder.vecB,app.GuiVarHolder.vecC);
+                       this.stepSize = app.GuiVarHolder.stepSize;
+                       this.speed = app.GuiVarHolder.speedOfMov;
                        var tempVector = this.frontVector.clone()
                        var temptemp = this.object.position.clone();
                        this.object.position.add(tempVector.multiplyScalar(this.stepSize));
                        
+                       var distance = this.object.position.distanceTo(this.centerPosition)/5;
                        
-                       this.debugMove +=  this.object.position.distanceTo(temptemp);
+                       temptemp.sub(this.centerPosition);
+                       this.object.position.add(temptemp.multiplyScalar(app.GuiVarHolder.alfaMul/distance));
                        
+                       this.object.material.color = new THREE.Color( (distance + 2.0)*0.3, (distance + 0.1)*0.5, (distance + 0.5)*1.0);
+       
                        this.t+=this.speed;
                        this.frontVector.applyAxisAngle(new THREE.Vector3(0,0,1),this.randomAngle*this.speed);
                        
@@ -198,35 +223,12 @@ function ( THREE, camera, renderer, scene) {
                     
                     this.t = 0;
                     this.debugMove = 0;
-                    this.randomAngle =  app.randomFloatFromInterval(-Math.PI*0.5,Math.PI*0.5);
+                    this.randomAngle =  app.randomFloatFromInterval(-Math.PI*app.GuiVarHolder.angleRand,Math.PI*app.GuiVarHolder.angleRand);
                     this.isMoving = true;
  
                     this.oldPosition = this.object.position.clone();
                     
                 },
-                
-                /*checkIfOkay()
-                {
-                    var circleRadius = (5.5 )/this.randomAngle;
-                    var hyber = (circleRadius*Math.sin(this.randomAngle))/Math.sin(Math.PI - 2*this.randomAngle);
-                    
-                    var x = Math.cos( this.randomAngle)*hyber;
-                    var y = Math.sin( this.randomAngle)*hyber;
-                    
-                    if(x > -50 && y > -50  && x < 50 && y < 50)
-                    { 
-                        console.log(this.object.position.distanceTo(new THREE.Vector3(x,y)) + "distance estimated");
-                        console.log(this.randomAngle);
-                        console.log(hyber);
-                        app.createLine(this.object.position,new THREE.Vector3(x,y,0),0xff0000);
-                        
-                        return true;
-                    }
-                    else
-                    {   
-                        return false;
-                     }
-                }*/
                
         });
 		

@@ -14,6 +14,9 @@ function ( THREE, camera, renderer, scene) {
 	text : [],
 	sceneObjects : [],
 	clock : 0,
+	mainParticleSystem : null,
+	clicked : false,
+	mouseVec : new THREE.Vector3(0,0,0),
 			
 	FizzyText :function()
 	{
@@ -46,9 +49,9 @@ function ( THREE, camera, renderer, scene) {
 	        folderM.add(this.GuiVarHolder, 'speedOfMov',-3,3); 
 	        folderM.add(this.GuiVarHolder, 'stepSize',-3,3);  
 	        folderM.add(this.GuiVarHolder, 'angleRand',-10,10);  
-	        folderM.add(this.GuiVarHolder, 'vecA');
-	        folderM.add(this.GuiVarHolder, 'vecB');
-	        folderM.add(this.GuiVarHolder, 'vecC');
+//	        folderM.add(this.GuiVarHolder, 'vecA');
+//	        folderM.add(this.GuiVarHolder, 'vecB');
+//	        folderM.add(this.GuiVarHolder, 'vecC');
 	        folderM.add(this.GuiVarHolder, 'alfaMul');	
 	},
 	
@@ -61,13 +64,41 @@ function ( THREE, camera, renderer, scene) {
         this.text[0].innerHTML = "hello"
         projector = new THREE.Projector();
 	    renderer.setClearColor( 0xff0000, 1 );
+	    var nimberOfParticles = 1000;
 	    
-	    
-	    for(var i = 0;i<100 ;i++)
-	    {
-	       this.createSphere(0,0);
+	   app.mainParticleSystem =  this.createParticleSystem(nimberOfParticles);
+	   for (var i=0; i < nimberOfParticles; i++) 
+	   {
+	        app.createMoveTransform(0,0,i);
 	   }
 	   window.requestAnimationFrame( app.animate );
+	   
+	   document.addEventListener( 'mousedown', this.onDocumentMouseDown, false );
+	   document.addEventListener( 'mousemove', this.onDocumentMouseMove, false );
+       document.addEventListener( 'mouseup', this.onDocumentMouseUp, false );
+	   
+    },
+    
+    createParticleSystem : function(numOfParticles)
+    {
+        var particle_system_geometry = new THREE.Geometry();
+       for (var i=0; i < numOfParticles; i++) 
+	   {
+          particle_system_geometry.vertices.push(new THREE.Vector3(Math.random()*30 - 15,  Math.random()*30 - 15, 0));
+          
+        }
+        particle_system_geometry.verticesNeedUpdate = true;
+        var particle_system_material = new THREE.ParticleBasicMaterial({
+          color: 0xffffff,
+          size: 1
+        });
+        var particleSystem = new THREE.ParticleSystem(
+          particle_system_geometry,
+            particle_system_material
+        );
+        scene.add(particleSystem);
+        return particleSystem;
+           
     },
 		
 
@@ -126,12 +157,10 @@ function ( THREE, camera, renderer, scene) {
         app.text.push(text2);
 	},
 	
-	createSphere : function(posX,posY)
+	createMoveTransform : function(posX,posY,id)
 	{
-		var sphere = new THREE.Mesh(new THREE.SphereGeometry(0.1, 1, 1 ), new THREE.MeshBasicMaterial({
-		color :  new THREE.Color( 1, 0, 0)}));
 		this.sceneObjects.push({
-                object : sphere,
+                index : id,
                 t : 0 , 
                 startX : posX,
                 startY : posY,
@@ -148,7 +177,7 @@ function ( THREE, camera, renderer, scene) {
                 speed : app.GuiVarHolder.speedOfMov,
                 randomAngle : app.randomFloatFromInterval(-Math.PI*app.GuiVarHolder.angleRand,Math.PI*app.GuiVarHolder.angleRand),
                 oldPosition : new THREE.Vector3(0,0,0),
-                lineDeb : [],
+
                 debugMove : 0,
                 
                 
@@ -159,14 +188,14 @@ function ( THREE, camera, renderer, scene) {
                        var point =  app.getBezierPosition(this.startX,this.mid1X,this.mid2X,this.endX,
                                                   this.startY,this.mid1Y,this.mid2Y,this.endY,this.t);
                        this.t+=this.speed;
-                       this.object.position = new THREE.Vector3(point.x,point.y,0);
+                       app.mainParticleSystem.vertices[this.index] = new THREE.Vector3(point.x,point.y,0);
                    }
                    this.isMoving = false;
                 },
                 resetAndRandomizeBezier : function()
                 {
-                   this.startX = this.object.position.x;
-                   this.startY = this.object.position.y;
+                   this.startX = app.mainParticleSystem.vertices[this.index].x;
+                   this.startY = app.mainParticleSystem.vertices[this.index].y;
                    
                    this.endX = app.randomFloatFromInterval(0,0);
                    this.endY = app.randomFloatFromInterval(0,0);
@@ -184,32 +213,33 @@ function ( THREE, camera, renderer, scene) {
                    if(this.t < 1)
                    {
         
-                       this.centerPosition = new THREE.Vector3(app.GuiVarHolder.vecA,app.GuiVarHolder.vecB,app.GuiVarHolder.vecC);
+                       this.centerPosition = app.mouseVec.clone();
                        this.stepSize = app.GuiVarHolder.stepSize;
                        this.speed = app.GuiVarHolder.speedOfMov;
                        var tempVector = this.frontVector.clone()
-                       var temptemp = this.object.position.clone();
-                       this.object.position.add(tempVector.multiplyScalar(this.stepSize));
+                       var temptemp = app.mainParticleSystem.geometry.vertices[this.index].clone();
+                       app.mainParticleSystem.geometry.vertices[this.index].add(tempVector.multiplyScalar(this.stepSize));
                        
-                       var distance = this.object.position.distanceTo(this.centerPosition)/50;
+                       var distance = app.mainParticleSystem.geometry.vertices[this.index].distanceTo(this.centerPosition)/5;
                        
                        temptemp.sub(this.centerPosition);
-                       this.object.position.add(temptemp.multiplyScalar(app.GuiVarHolder.alfaMul/distance));
+                       app.mainParticleSystem.geometry.vertices[this.index].add(temptemp.multiplyScalar(app.GuiVarHolder.alfaMul/distance));
                        
-                       this.object.material.color = new THREE.Color( (distance + 2.0)*0.3, (distance + 0.1)*0.5, (distance + 0.5)*1.0);
+                       //this.object.material.color = new THREE.Color( (distance + 2.0)*0.3, (distance + 0.1)*0.5, (distance + 0.5)*1.0);
        
                        this.t+=this.speed;
                        this.frontVector.applyAxisAngle(new THREE.Vector3(0,0,1),this.randomAngle*this.speed);
                        
-                       if(this.object.position.y > 27)
-                            this.object.position.y = -27;
-                       if(this.object.position.y < -27)
-                            this.object.position.y = 27;
-                       if(this.object.position.x > 50)
-                            this.object.position.x = -50;
-                       if(this.object.position.x < -50)
-                            this.object.position.x = 50;
-                       
+                       if(app.mainParticleSystem.geometry.vertices[this.index].y > 27)
+                            app.mainParticleSystem.geometry.vertices[this.index].y = -27;
+                       if(app.mainParticleSystem.geometry.vertices[this.index].y < -27)
+                            app.mainParticleSystem.geometry.vertices[this.index].y = 27;
+                       if(app.mainParticleSystem.geometry.vertices[this.index].x > 50)
+                            app.mainParticleSystem.geometry.vertices[this.index].x = -50;
+                       if(app.mainParticleSystem.geometry.vertices[this.index].x < -50)
+                            app.mainParticleSystem.geometry.vertices[this.index].x = 50;
+                        
+                        app.mainParticleSystem.geometry.verticesNeedUpdate = true;
                    }
                    else
                     {
@@ -226,15 +256,11 @@ function ( THREE, camera, renderer, scene) {
                     this.randomAngle =  app.randomFloatFromInterval(-Math.PI*app.GuiVarHolder.angleRand,Math.PI*app.GuiVarHolder.angleRand);
                     this.isMoving = true;
  
-                    this.oldPosition = this.object.position.clone();
+                    this.oldPosition = app.mainParticleSystem.geometry.vertices[this.index].clone();
                     
                 },
                
-        });
-		
-		sphere.position = new THREE.Vector3(posX,posY,0);	 
-		sphere.name = " sphere_";
-		scene.add(sphere);	
+        });	
     },
     
     createLine : function(pointA,pointB,colorA)
@@ -266,6 +292,34 @@ function ( THREE, camera, renderer, scene) {
 				scene.add(line);
 			},			
 
+	        onDocumentMouseDown:function (event)
+			{
+			    app.clicked = true;
+			    app.mouseVec.x = (2 * (event.clientX / window.innerWidth) - 1)*50;
+				app.mouseVec.y = (1 - 2 * ( event.clientY /  window.innerHeight ))*50;
+				
+				app.mouseVec.z = 0;	
+				app.GuiVarHolder.alfaMul = - 0.01; 		
+				
+			},
+	
+	        onDocumentMouseMove:function (event)
+			{
+			    if(app.clicked)
+			    {
+			         app.mouseVec.x = (2 * (event.clientX / window.innerWidth) - 1)*50;
+				     app.mouseVec.y = (1 - 2 * ( event.clientY /  window.innerHeight ))*50;
+				
+				     app.mouseVec.z = 0;
+				     app.GuiVarHolder.alfaMul-=0.03; 
+			    }
+			},
+	        onDocumentMouseUp:function (event)
+			{
+			    app.clicked = false;
+			    app.GuiVarHolder.alfaMul =0.01; 
+			},
+	
 	
   };
   return app;

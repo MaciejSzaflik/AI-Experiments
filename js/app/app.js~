@@ -49,9 +49,6 @@ function ( THREE, camera, renderer, scene) {
 	        folderM.add(this.GuiVarHolder, 'speedOfMov',-3,3); 
 	        folderM.add(this.GuiVarHolder, 'stepSize',-3,3);  
 	        folderM.add(this.GuiVarHolder, 'angleRand',-10,10);  
-//	        folderM.add(this.GuiVarHolder, 'vecA');
-//	        folderM.add(this.GuiVarHolder, 'vecB');
-//	        folderM.add(this.GuiVarHolder, 'vecC');
 	        folderM.add(this.GuiVarHolder, 'alfaMul');	
 	},
 	
@@ -64,7 +61,7 @@ function ( THREE, camera, renderer, scene) {
         this.text[0].innerHTML = "hello"
         projector = new THREE.Projector();
 	    renderer.setClearColor( 0xff0000, 1 );
-	    var nimberOfParticles = 1000;
+	    var nimberOfParticles = 30;
 	    
 	   app.mainParticleSystem =  this.createParticleSystem(nimberOfParticles);
 	   for (var i=0; i < nimberOfParticles; i++) 
@@ -116,14 +113,15 @@ function ( THREE, camera, renderer, scene) {
     
     animate: function () 
     {
+        leadVector = app.sceneObjects[0].getCollectiveVector() 
         for(var i = 0;i<app.sceneObjects.length;i++)
         {
-            var alfa = app.sceneObjects[i];
-            if(alfa.isMoving)
+            if(app.sceneObjects[i].isMoving)
             {
-                alfa.moveByVector();
+                app.sceneObjects[i].moveByVector(leadVector);
             }
         }
+      
         window.requestAnimationFrame( app.animate );
 		app.render();
 		
@@ -207,8 +205,19 @@ function ( THREE, camera, renderer, scene) {
                    
                    this.isMoving = true;
                 },  
-                
-                moveByVector()
+                getCollectiveVector()
+                {
+                    if(app.sceneObjects.length==0)
+                        return THREE.Vector3(0,0,0);
+                         
+                    var collectiveVector = app.sceneObjects[0].frontVector.clone();
+                    for(var i = 1;i<app.sceneObjects.length;i++)
+                    {
+                       collectiveVector.add(app.sceneObjects[i].frontVector)
+                    }
+                    return collectiveVector.divideScalar(app.sceneObjects.length);
+                },
+                moveByVector(collectiveVector)
                 {
                    if(this.t < 1)
                    {
@@ -220,16 +229,14 @@ function ( THREE, camera, renderer, scene) {
                        var temptemp = app.mainParticleSystem.geometry.vertices[this.index].clone();
                        app.mainParticleSystem.geometry.vertices[this.index].add(tempVector.multiplyScalar(this.stepSize));
                        
-                       var distance = app.mainParticleSystem.geometry.vertices[this.index].distanceTo(this.centerPosition)/5;
+                       //var distance = app.mainParticleSystem.geometry.vertices[this.index].distanceTo(this.centerPosition)/5;
                        
                        temptemp.sub(this.centerPosition);
-                       app.mainParticleSystem.geometry.vertices[this.index].add(temptemp.multiplyScalar(app.GuiVarHolder.alfaMul/distance));
+                       //app.mainParticleSystem.geometry.vertices[this.index].add(temptemp.multiplyScalar(app.GuiVarHolder.alfaMul/distance));
                        
-                       //this.object.material.color = new THREE.Color( (distance + 2.0)*0.3, (distance + 0.1)*0.5, (distance + 0.5)*1.0);
-       
                        this.t+=this.speed;
                        this.frontVector.applyAxisAngle(new THREE.Vector3(0,0,1),this.randomAngle*this.speed);
-                       
+                       this.frontVector.lerp(collectiveVector,0.5);
                        if(app.mainParticleSystem.geometry.vertices[this.index].y > 27)
                             app.mainParticleSystem.geometry.vertices[this.index].y = -27;
                        if(app.mainParticleSystem.geometry.vertices[this.index].y < -27)
@@ -299,7 +306,7 @@ function ( THREE, camera, renderer, scene) {
 				app.mouseVec.y = (1 - 2 * ( event.clientY /  window.innerHeight ))*50;
 				
 				app.mouseVec.z = 0;	
-				app.GuiVarHolder.alfaMul = - 0.01; 		
+				app.GuiVarHolder.alfaMul = - 0.02; 		
 				
 			},
 	
